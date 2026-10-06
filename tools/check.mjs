@@ -23,6 +23,7 @@ export async function open(url, { width = 1440, height = 900, reduce = false, da
   };
   const send = (method, params = {}) => new Promise(r => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   for (const d of ['Runtime', 'Network', 'Page', 'Log']) await send(`${d}.enable`);
+  await send('Network.setCacheDisabled', { cacheDisabled: true });
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 600 });
   const features = [{ name: 'prefers-reduced-motion', value: reduce ? 'reduce' : 'no-preference' }, { name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }];
   await send('Emulation.setEmulatedMedia', { features });
@@ -67,6 +68,8 @@ export const CHECKS = {
     if (!r.hat) throw new Error('no top-hat link to potato/');
     if (!r.noContact) throw new Error('contact details on the page');
     if (bad.length) throw new Error(bad.join(', '));
+    // the real page is ~53 KB; near zero means the weight came from cache and measured nothing
+    if (bytes < 10_000) throw new Error(`${bytes} bytes before loops: implausibly small, cache not bypassed`);
     if (bytes > 300_000) throw new Error(`${bytes} bytes before loops`);
     if (p.errors.length) throw new Error(p.errors.join('; '));
   },

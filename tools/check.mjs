@@ -120,6 +120,37 @@ export const CHECKS = {
     await p.close();
     if (anim.length) throw new Error(`animated loops fetched: ${anim.map(q => q.url)}`);
   },
+  // every chapter's painting is the same size, whichever side it sits on
+  async layout() {
+    const p = await open(base, { wait: 1200 });
+    const ws = await p.ev(`[...document.querySelectorAll('figure.chapter img')].map(i => Math.round(i.getBoundingClientRect().width))`);
+    await p.close();
+    if (Math.max(...ws) - Math.min(...ws) > 2) throw new Error(`chapter image widths ${ws}`);
+  },
+  // the footer hat stays visible on night paper (3:1 against the page)
+  async hat() {
+    const p = await open(base, { dark: true, wait: 1200 });
+    const r = await p.ev(`(() => {
+      const rgb = s => s.match(/\\d+(\\.\\d+)?/g).slice(0, 3).map(Number);
+      const lum = c => { const [r, g, b] = c.map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+      const h = document.querySelector('footer .hat-mark'); if (!h) return null;
+      const [a, b] = [lum(rgb(getComputedStyle(h).backgroundColor)), lum(rgb(getComputedStyle(document.body).backgroundColor))].sort((x, y) => y - x);
+      return (a + .05) / (b + .05);
+    })()`);
+    await p.close();
+    if (!(r >= 3)) throw new Error(`hat contrast ${r}`);
+  },
+  // every loop and still exists; each loop is 1-2 MB, each still under 60 KB
+  async budget() {
+    for (const n of ['hero', 'byu', 'utah', 'verana', 'citrine', 'nights']) {
+      const a = await fetch(base + `img/loops/${n}.webp`), s = await fetch(base + `img/loops/${n}-still.webp`);
+      if (a.status !== 200 || s.status !== 200) throw new Error(`${n}: ${a.status}/${s.status}`);
+      const [ab, sb] = [(await a.arrayBuffer()).byteLength, (await s.arrayBuffer()).byteLength];
+      if (ab > 2_100_000) throw new Error(`${n}.webp ${ab} bytes`);
+      if (sb > 60_000) throw new Error(`${n}-still.webp ${sb} bytes`);
+      if (Buffer.from(await (await fetch(base + `img/loops/${n}.webp`)).arrayBuffer()).indexOf('ANIM') < 0) throw new Error(`${n}.webp is not animated`);
+    }
+  },
 };
 
 let failed = 0;

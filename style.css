@@ -37,6 +37,8 @@ h2 { font-size: clamp(26px, 3.4vw, 34px); margin: 2.2em 0 .5em; }
 .chapter figcaption strong { color: var(--ink); }
 @media (min-width: 900px) {
   .chapter { grid-template-columns: 3fr 2fr; align-items: center; gap: 36px; }
+  /* alternate sides, keeping the painting in the wider column */
+  .chapter:nth-child(even) { grid-template-columns: 2fr 3fr; }
   .chapter:nth-child(even) img { order: 2; }
 }
 
@@ -48,5 +50,7 @@ h2 { font-size: clamp(26px, 3.4vw, 34px); margin: 2.2em 0 .5em; }
 .papers span { display: block; font-size: 15px; color: var(--ink-soft); }
 
 footer { display: grid; place-items: center; padding: 70px 16px 40px; }
-.hat img { width: 36px; opacity: .8; transition: transform .25s; }
-.hat:hover img { transform: rotate(-12deg) translateY(-3px); opacity: 1; }
+/* the hat is a mask filled with the ink colour, so it follows light and dark */
+.hat-mark { display: block; width: 36px; height: 30px; background: var(--ink); opacity: .85; transition: transform .25s;
+  -webkit-mask: url(img/hat.svg) center / contain no-repeat; mask: url(img/hat.svg) center / contain no-repeat; }
+.hat:hover .hat-mark { transform: rotate(-12deg) translateY(-3px); opacity: 1; }

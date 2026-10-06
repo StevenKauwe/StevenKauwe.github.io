@@ -147,6 +147,29 @@ export const CHECKS = {
     await p.close();
     if (!(r >= 3)) throw new Error(`hat contrast ${r}`);
   },
+  // each poster still (all a reduced-motion visitor ever sees) shows the story, not the loop's empty first frame
+  async posters() {
+    const p = await open(base, { reduce: true, wait: 800 });
+    const r = await p.ev(`(async () => {
+      const out = {};
+      for (const n of ['hero', 'byu', 'utah', 'verana', 'citrine', 'nights']) {
+        const img = new Image(); img.src = 'img/loops/' + n + '-still.webp'; await img.decode();
+        const c = document.createElement('canvas'); c.width = 240; c.height = 135;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0, 240, 135);
+        const d = g.getImageData(0, 0, 240, 135).data;
+        let inked = 0;
+        for (let i = 0; i < d.length; i += 4) if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 60) inked++;
+        out[n] = +(inked / (d.length / 4)).toFixed(3);
+      }
+      return out;
+    })()`);
+    await p.close();
+    console.log(`  ${Object.entries(r).map(([n, v]) => `${n} ${v}`).join(' | ')}`);
+    // share of strongly coloured pixels (max-min channel > 60); the empty first frames are paper and pencil only (0%),
+    // the sparest story frame (verana's highlighter strokes) is ~1.3%
+    const flat = Object.entries(r).filter(([, v]) => v < 0.005).map(([n]) => n);
+    if (flat.length) throw new Error(`empty-looking posters: ${flat}`);
+  },
   // every loop and still exists; each loop is 1-2 MB, each still under 60 KB
   async budget() {
     for (const n of ['hero', 'byu', 'utah', 'verana', 'citrine', 'nights']) {

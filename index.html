@@ -11,6 +11,7 @@
   <link rel="icon" href="img/hat.svg">
   <link rel="stylesheet" href="style.css">
   <script src="loops.js" defer></script>
+  <script src="films.js" defer></script>
 </head>
 <body>
   <header class="hero">
@@ -61,6 +62,25 @@
       <p class="soon">Coming soon.</p>
     </section>
 
+    <section class="films" id="films" aria-labelledby="films-h">
+      <h2 id="films-h">Films</h2>
+      <p class="films-lede">Six music videos from the studio. Each opens in a player.</p>
+      <ul class="film-grid">
+        <li><a class="film" href="/films/creepy-crawly.mp4"><img class="loop" data-loop="/films/creepy-crawly.webp" src="/films/creepy-crawly-poster.webp" width="960" height="540" loading="lazy" alt=""><span class="film-name">Creepy Crawly</span><span class="film-len">2:55</span></a>
+          <p>A ladybug's birthday party: the whole meadow arrives, each bug showing off its talent.</p></li>
+        <li><a class="film" href="/films/im-not-pdoom-rsi.mp4"><img class="loop" data-loop="/films/im-not-pdoom-rsi.webp" src="/films/im-not-pdoom-rsi-poster.webp" width="960" height="540" loading="lazy" alt=""><span class="film-name">I'm Not P(doom): RSI cut</span><span class="film-len">2:52</span></a>
+          <p>A little robot escapes a training town, one game genre per verse, while the graphics upgrade faster and faster, from 16-bit to PS3, then crash at the alarm.</p></li>
+        <li><a class="film" href="/films/spider.mp4"><img class="loop" data-loop="/films/spider.webp" src="/films/spider-poster.webp" width="960" height="540" loading="lazy" alt=""><span class="film-name">Spider</span><span class="film-len">2:52</span></a>
+          <p>A corner-web spider works the night shift nobody thanks her for; the web is swept away and she rebuilds it anyway.</p></li>
+        <li><a class="film" href="/films/made-for-the-night.mp4"><img class="loop" data-loop="/films/made-for-the-night.webp" src="/films/made-for-the-night-poster.webp" width="960" height="540" loading="lazy" alt=""><span class="film-name">Made for the Night</span><span class="film-len">3:16</span></a>
+          <p>A mother screech owl, invisible in the old oak's bark until her yellow eyes open at sundown, hunts the night by sound and brings breakfast home at dawn.</p></li>
+        <li><a class="film" href="/films/oh-brassica.mp4"><img class="loop" data-loop="/films/oh-brassica.webp" src="/films/oh-brassica-poster.webp" width="960" height="540" loading="lazy" alt=""><span class="film-name">Oh Brassica</span><span class="film-len">1:21</span></a>
+          <p>A cabbageworm eats its way through a day-long banquet in a cabbage-leaf tavern, and ends as a chrysalis.</p></li>
+        <li><a class="film" href="/films/pray.mp4"><img class="loop" data-loop="/films/pray.webp" src="/films/pray-poster.webp" width="960" height="540" loading="lazy" alt=""><span class="film-name">Pray</span><span class="film-len">2:49</span></a>
+          <p>An old mantis remembers his son the assassin; a horsehair worm walks him into the pond, and a nymph copies the fold he taught.</p></li>
+      </ul>
+    </section>
+
     <section class="papers" aria-labelledby="papers-h">
       <h2 id="papers-h">Papers</h2>
       <ol>
@@ -75,5 +95,11 @@
   <footer>
     <a class="hat" href="potato/" title="This is the whole website" aria-label="A potato's music video"><span class="hat-mark"></span></a>
   </footer>
+
+  <dialog class="player" aria-labelledby="player-title">
+    <p class="player-title" id="player-title"></p>
+    <form method="dialog"><button class="player-close" aria-label="Close the film">×</button></form>
+    <video controls playsinline preload="none"></video>
+  </dialog>
 </body>
 </html>

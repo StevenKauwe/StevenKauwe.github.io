@@ -124,7 +124,7 @@ export const CHECKS = {
     const animatedFirst = p.requests.filter(q => /\/loops\/(?!.*-still)[a-z]+\.webp$/.test(q.url)).map(q => q.url);
     const r = await p.ev(`(async () => {
       const imgs = [...document.querySelectorAll('img.loop')];
-      const state = () => imgs.map(i => i.getAttribute('src').endsWith('-still.webp') ? 'still' : 'anim');
+      const state = () => imgs.map(i => i.getAttribute('src') === i.dataset.loop ? 'anim' : 'still');
       const top = state();
       document.querySelector('figure.chapter:nth-of-type(3)').scrollIntoView({ block: 'center' });
       await new Promise(r => setTimeout(r, 600));
@@ -245,6 +245,103 @@ export const CHECKS = {
       if (bad.test(log)) hits.push(`${dir}: commit messages`);
     }
     if (hits.length) throw new Error(hits.join(', '));
+  },
+  // six film cards, in order, each linking to a film that exists, with its preview and poster
+  async films() {
+    const p = await open(base, { wait: 1200 });
+    const cards = await p.ev(`[...document.querySelectorAll('section.films a.film')].map(a => ({
+      href: a.getAttribute('href'), name: a.querySelector('.film-name')?.textContent.trim(),
+      len: a.querySelector('.film-len')?.textContent.trim(),
+      loop: a.querySelector('img.loop')?.dataset.loop, src: a.querySelector('img.loop')?.getAttribute('src') }))`);
+    await p.close();
+    const got = (cards ?? []).map(c => c.href);
+    const want = FILMS.map(s => `/films/${s}.mp4`);
+    if (JSON.stringify(got) !== JSON.stringify(want)) throw new Error(`cards ${got}`);
+    for (const [i, c] of cards.entries()) {
+      const s = FILMS[i];
+      if (!c.name || !/^\d:\d\d$/.test(c.len ?? '')) throw new Error(`${s}: name ${c.name}, length ${c.len}`);
+      if (c.loop !== `/films/${s}.webp` || c.src !== `/films/${s}-poster.webp`) throw new Error(`${s}: loop ${c.loop}, src ${c.src}`);
+      for (const u of [c.href, c.loop, c.src]) if ((await status(new URL(u, base).href)) !== 200) throw new Error(`${u} not 200`);
+    }
+  },
+  // a card opens the player; the film streams, seeks (a 206) and stops when the player closes
+  async player() {
+    const p = await open(base, { wait: 1200 });
+    // a real click carries user activation, which lets films.js's play() start the film; a plain el.click() would not
+    await p.send('Runtime.evaluate', { userGesture: true, expression: `(() => {
+      const a = document.querySelector('a.film[href="/films/spider.mp4"]');
+      if (a && document.querySelector('dialog.player')) { a.scrollIntoView({ block: 'center' }); a.click(); } })()` });
+    const r = await p.ev(`(async () => {
+      const dlg = document.querySelector('dialog.player'), v = dlg?.querySelector('video');
+      if (!v || !dlg.open && !v.getAttribute('src')) return { missing: true };
+      const until = (event, ms) => new Promise((res, rej) => {
+        const t = setTimeout(() => rej(new Error(event + ' never fired (readyState ' + v.readyState + ', networkState ' + v.networkState + ', paused ' + v.paused + ')')), ms);
+        v.addEventListener(event, () => { clearTimeout(t); res(); }, { once: true });
+      });
+      try {
+        const opened = dlg.open, title = dlg.querySelector('.player-title')?.textContent;
+        if (v.paused) await until('playing', 15000);
+        await new Promise(r => setTimeout(r, 1500));
+        const played = v.currentTime, target = v.duration * 0.6;
+        const seeked = until('seeked', 15000); v.currentTime = target; await seeked;
+        const after = v.currentTime, d = v.duration, w = v.videoWidth;
+        dlg.close(); await new Promise(r => setTimeout(r, 100));
+        return { opened, title, d, w, played, target, after, closed: !dlg.open, paused: v.paused, src: v.getAttribute('src') };
+      } catch (e) { return { fail: e.message }; }
+    })()`);
+    const ranged = [...p.live.values()].filter(q => q.url.endsWith('/films/spider.mp4') && q.status === 206).length;
+    await p.close();
+    if (!r || r.missing) throw new Error('no film card or player');
+    if (r.fail) throw new Error(r.fail);
+    if (!r.opened || r.title !== 'Spider') throw new Error(`dialog open ${r.opened}, title ${r.title}`);
+    if (!(r.d > 160) || r.w !== 1920) throw new Error(`video ${r.d} s, ${r.w} px`);
+    if (!(r.played > 0.3)) throw new Error(`did not play (${r.played})`);
+    if (Math.abs(r.after - r.target) > 1) throw new Error(`seek to ${r.target} landed at ${r.after}`);
+    if (!ranged) throw new Error('no 206 response for the film');
+    if (!r.closed || !r.paused || r.src !== null) throw new Error(`after close: open ${!r.closed}, paused ${r.paused}, src ${r.src}`);
+    if (p.errors.length) throw new Error(p.errors.join('; '));
+  },
+  // the gallery costs nothing at the top of the page, and no film is downloaded without a click
+  async filmsweight() {
+    const p = await open(base, { wait: 2000 });
+    const early = p.requests.filter(q => q.url.includes('/films/')).map(q => q.url);
+    await p.ev(`(async () => { document.querySelector('section.films').scrollIntoView(); await new Promise(r => setTimeout(r, 2000)); })()`);
+    const later = [...p.live.values()].filter(q => q.url.includes('/films/'));
+    await p.close();
+    if (early.length) throw new Error(`fetched at the top: ${early}`);
+    const mp4 = later.filter(q => /\.mp4$/.test(q.url)).map(q => q.url);
+    if (mp4.length) throw new Error(`MP4 fetched without a click: ${mp4}`);
+    if (!later.length) throw new Error('nothing from /films/ after scrolling to the gallery');
+    console.log(`  after scrolling to the gallery: ${later.length} files, ${(later.reduce((s, q) => s + q.bytes, 0) / 1e6).toFixed(2)} MB`);
+  },
+  // reduced motion: the gallery shows posters only
+  async filmsreduced() {
+    const p = await open(base, { reduce: true, wait: 1200 });
+    const srcs = await p.ev(`(async () => { document.querySelector('section.films').scrollIntoView(); await new Promise(r => setTimeout(r, 1500));
+      return [...document.querySelectorAll('section.films img')].map(i => i.getAttribute('src')); })()`);
+    const previews = [...p.live.values()].filter(q => /\/films\/[a-z-]+\.webp$/.test(q.url) && !/-poster\.webp$/.test(q.url));
+    const posters = [...p.live.values()].filter(q => /-poster\.webp$/.test(q.url) && q.status === 200);
+    await p.close();
+    if (previews.length) throw new Error(`previews fetched: ${previews.map(q => q.url)}`);
+    if (!srcs?.length || !srcs.every(s => s.endsWith('-poster.webp'))) throw new Error(`srcs ${srcs}`);
+    if (!posters.length) throw new Error('no poster loaded');
+  },
+  // 390 px: the gallery fits, one card per row, readable text
+  async filmsnarrow() {
+    const p = await open(base, { width: 390, height: 844 });
+    const r = await p.ev(`(async () => { const s = document.querySelector('section.films'); s.scrollIntoView(); await new Promise(r => setTimeout(r, 800));
+      const cards = [...s.querySelectorAll('a.film')].map(a => a.getBoundingClientRect());
+      return { sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
+        maxRight: Math.max(...cards.map(c => c.right)), lefts: new Set(cards.map(c => Math.round(c.left))).size,
+        text: parseFloat(getComputedStyle(s.querySelector('li p')).fontSize) }; })()`);
+    const shot = join(process.env.SITE_SHOTS ?? tmpdir(), 'films-390.png');
+    await p.screenshot(shot); console.log(`  screenshot ${shot}`);
+    await p.close();
+    if (!r) throw new Error('no films section');
+    if (r.sw > r.cw) throw new Error(`horizontal scroll: ${r.sw} > ${r.cw}`);
+    if (r.maxRight > r.cw) throw new Error(`card overflows: ${r.maxRight} > ${r.cw}`);
+    if (r.lefts !== 1) throw new Error(`${r.lefts} columns at 390 px`);
+    if (r.text < 15) throw new Error(`description ${r.text}px`);
   },
 };
 

@@ -1,12 +1,31 @@
 // check.mjs: headless checks of the site over the Chrome DevTools Protocol.
 // Usage: node tools/check.mjs <baseUrl> [check…]   (needs Chrome on --remote-debugging-port=9222)
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const base = (process.argv[2] ?? 'http://127.0.0.1:8765/').replace(/\/?$/, '/');
 const only = process.argv.slice(3);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const SITE_DIR = fileURLToPath(new URL('..', import.meta.url));
+const FILMS_DIR = process.env.FILMS_DIR ?? join(SITE_DIR, '..', 'films');
+// the gallery's films, in page order; the potato is served from /films/ too but lives at /potato/ only
+const FILMS = ['creepy-crawly', 'im-not-pdoom-rsi', 'spider', 'made-for-the-night', 'oh-brassica', 'pray'];
+const POTATO = 'this-is-the-whole-website';
+const probe = url => JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:format_tags:stream=codec_name,width,height:stream_tags', '-of', 'json', url], { encoding: 'utf8' }));
+// top-level MP4 boxes in file order, read with Range requests (faststart puts moov before mdat)
+async function boxes(url) {
+  const size = +(await fetch(url, { method: 'HEAD' })).headers.get('content-length'), out = [];
+  for (let off = 0; off < size && out.length < 16;) {
+    const b = Buffer.from(await (await fetch(url, { headers: { Range: `bytes=${off}-${off + 15}` } })).arrayBuffer());
+    let len = b.readUInt32BE(0); if (len === 1) len = Number(b.readBigUInt64BE(8));
+    out.push(b.toString('latin1', 4, 8)); if (len < 8) break; off += len;
+  }
+  return out;
+}
 
 export async function open(url, { width = 1440, height = 900, reduce = false, dark = false, wait = 2500 } = {}) {
   const tab = await (await fetch('http://127.0.0.1:9222/json/new?about:blank', { method: 'PUT' })).json();
@@ -180,6 +199,52 @@ export const CHECKS = {
       if (sb > 60_000) throw new Error(`${n}-still.webp ${sb} bytes`);
       if (Buffer.from(await (await fetch(base + `img/loops/${n}.webp`)).arrayBuffer()).indexOf('ANIM') < 0) throw new Error(`${n}.webp is not animated`);
     }
+  },
+  // the films repo, as served at /films/: web-sized faststart MP4s with no tags, a preview loop and a poster each
+  async filmfiles() {
+    for (const s of [...FILMS, POTATO]) {
+      const u = base + `films/${s}.mp4`, h = await fetch(u, { method: 'HEAD' });
+      if (h.status !== 200) throw new Error(`${s}.mp4 ${h.status}`);
+      const bytes = +h.headers.get('content-length');
+      if (bytes > 80_000_000) throw new Error(`${s}.mp4 ${bytes} bytes`);
+      const r = await fetch(u, { headers: { Range: 'bytes=0-1' } });
+      if (r.status !== 206) throw new Error(`${s}.mp4 range ${r.status}`);
+      const p = probe(u), v = p.streams.find(x => x.codec_name === 'h264'), a = p.streams.find(x => x.codec_name === 'aac');
+      if (!v || !a || v.width !== 1920 || v.height !== 1080) throw new Error(`${s}.mp4 streams ${JSON.stringify(p.streams)}`);
+      if (p.format.tags?.title) throw new Error(`${s}.mp4 has a title tag`);
+      if (!(+p.format.duration > 60)) throw new Error(`${s}.mp4 duration ${p.format.duration}`);
+      const b = await boxes(u);
+      if (!(b.indexOf('moov') >= 0 && b.indexOf('moov') < b.indexOf('mdat'))) throw new Error(`${s}.mp4 not faststart: ${b}`);
+      const pv = await fetch(base + `films/${s}.webp`), po = await fetch(base + `films/${s}-poster.webp`);
+      if (pv.status !== 200 || po.status !== 200) throw new Error(`${s}: preview ${pv.status}, poster ${po.status}`);
+      const [pvb, pob] = [Buffer.from(await pv.arrayBuffer()), Buffer.from(await po.arrayBuffer())];
+      if (pvb.indexOf('ANIM') < 0 || pvb.length > 1_500_000) throw new Error(`${s}.webp ${pvb.length} bytes, animated ${pvb.indexOf('ANIM') >= 0}`);
+      if (pob.indexOf('ANIM') >= 0 || pob.length > 80_000) throw new Error(`${s}-poster.webp ${pob.length} bytes`);
+      console.log(`  ${s}: mp4 ${(bytes / 1e6).toFixed(1)} MB ${(+p.format.duration).toFixed(1)} s, preview ${(pvb.length / 1e6).toFixed(2)} MB, poster ${(pob.length / 1e3).toFixed(0)} KB`);
+    }
+  },
+  // Creepy Crawly is published under its own name only: its source folder's name appears nowhere public
+  async hiddenname() {
+    const bad = /c[o]co/i; // the bracket keeps this file from matching itself
+    const hits = [];
+    for (const u of ['', 'potato/', 'films/']) { const r = await fetch(base + u); if (r.ok && bad.test(await r.text())) hits.push(base + u); }
+    for (const s of [...FILMS, POTATO]) {
+      const u = base + `films/${s}.mp4`;
+      if ((await status(u)) === 200 && bad.test(JSON.stringify(probe(u)))) hits.push(`${s}.mp4 tags`);
+    }
+    // local repos: every tracked or unignored file's name, the text of the text files, and the commit messages
+    // (the media's bytes are compressed noise that matches any short pattern by chance; names and tags are checked instead)
+    for (const dir of [SITE_DIR, FILMS_DIR]) {
+      if (!existsSync(join(dir, '.git'))) { console.log(`  no repo at ${dir}: skipped`); continue; }
+      const files = execFileSync('git', ['-C', dir, 'ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+      for (const f of files) {
+        if (bad.test(f)) hits.push(`${dir}: name ${f}`);
+        else if (/\.(html|css|js|mjs|md|json|svg|txt)$/.test(f) && existsSync(join(dir, f)) && bad.test(readFileSync(join(dir, f), 'utf8'))) hits.push(`${dir}: text ${f}`);
+      }
+      let log = ''; try { log = execFileSync('git', ['-C', dir, 'log', '--format=%B'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch {}
+      if (bad.test(log)) hits.push(`${dir}: commit messages`);
+    }
+    if (hits.length) throw new Error(hits.join(', '));
   },
 };
 

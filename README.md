@@ -1,9 +1,7 @@
 # stevenkauwe.github.io
 
-It's a potato. Specifically, a 72-second music video of one: *This Is the Whole Website*.
+Steven Kauwe's site: one page of painted career chapters, papers and (soon) an in-browser stem splitter.
+Hand-written HTML/CSS plus `loops.js`; no build step. The chapter loops are painted with the brush engine in
+`music-to-movie-magic` (`songs/site-chapters/`). The potato lives at `/potato/`.
 
-- `this-is-the-whole-website.mp4`: the video (1080p, H.264/AAC, web encode).
-- `poster.webp`: the frame shown before it plays.
-
-The film was made in `music-to-movie-magic` (`songs/potato/`): hand-painted with the brush engine, timed to the
-song with whisper.
+Checks: `node tools/check.mjs <baseUrl> [check…]` with Chrome on `--remote-debugging-port=9222`.

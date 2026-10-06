@@ -46,6 +46,52 @@ export const CHECKS = {
     for (const u of ['this-is-the-whole-website.mp4', 'poster.webp']) if ((await status(base + u)) !== 200) throw new Error(`${u} not 200`);
     if (p.errors.length) throw new Error(p.errors.join('; '));
   },
+  // the page reads right and stays light before any loop loads
+  async shell() {
+    const p = await open(base, { wait: 1500 });
+    const r = await p.ev(`({
+      h1: document.querySelector('h1')?.textContent.trim(),
+      lede: document.querySelector('.lede')?.textContent.trim(),
+      chapters: [...document.querySelectorAll('figure.chapter figcaption')].map(f => f.textContent.trim()),
+      papers: [...document.querySelectorAll('.papers li a')].map(a => a.href),
+      hat: document.querySelector('footer a[href="potato/"]') !== null,
+      noContact: !/@|\\(801\\)|tel:/.test(document.body.innerHTML),
+    })`);
+    const bytes = p.requests.filter(q => !/\.webp$/.test(q.url) || /-still\.webp$/.test(q.url)).reduce((s, q) => s + q.bytes, 0);
+    const bad = p.requests.filter(q => q.status !== 200 && q.status !== 304).map(q => `${q.status} ${q.url}`);
+    await p.close();
+    if (r.h1 !== 'Steven Kauwe') throw new Error(`h1 ${r.h1}`);
+    if (r.lede !== 'Machine-learning engineer. PhD in materials science. At night, I direct coding agents that build films and Rust.') throw new Error(`lede ${r.lede}`);
+    if (r.chapters.length !== 5) throw new Error(`${r.chapters.length} chapters`);
+    if (r.papers.length !== 4 || !r.papers.every(h => h.startsWith('https://doi.org/'))) throw new Error(`papers ${r.papers}`);
+    if (!r.hat) throw new Error('no top-hat link to potato/');
+    if (!r.noContact) throw new Error('contact details on the page');
+    if (bad.length) throw new Error(bad.join(', '));
+    if (bytes > 300_000) throw new Error(`${bytes} bytes before loops`);
+    if (p.errors.length) throw new Error(p.errors.join('; '));
+  },
+  // 390 px: no horizontal scroll, readable captions
+  async narrow() {
+    const p = await open(base, { width: 390, height: 844 });
+    const r = await p.ev(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
+      cap: parseFloat(getComputedStyle(document.querySelector('figcaption')).fontSize) })`);
+    await p.screenshot('/private/tmp/claude-502/-Users-kaaikauwe-Documents-craft-craft/5f08bbdc-d5a5-497d-9b4d-1651a6829f8b/scratchpad/site-390.png');
+    await p.close();
+    if (r.sw > r.cw) throw new Error(`horizontal scroll: ${r.sw} > ${r.cw}`);
+    if (r.cap < 15) throw new Error(`caption ${r.cap}px`);
+  },
+  // night paper: body text keeps 7:1 contrast
+  async dark() {
+    const p = await open(base, { dark: true });
+    const r = await p.ev(`(() => {
+      const rgb = s => s.match(/\\d+(\\.\\d+)?/g).slice(0, 3).map(Number);
+      const lum = c => { const [r, g, b] = c.map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+      const fg = rgb(getComputedStyle(document.querySelector('.lede')).color), bg = rgb(getComputedStyle(document.body).backgroundColor);
+      const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x); return (a + .05) / (b + .05);
+    })()`);
+    await p.close();
+    if (!(r >= 7)) throw new Error(`contrast ${r.toFixed(2)}:1`);
+  },
 };
 
 let failed = 0;

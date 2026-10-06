@@ -3,18 +3,75 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>This Is the Whole Website</title>
-  <meta property="og:title" content="This Is the Whole Website">
-  <meta property="og:image" content="poster.webp">
-  <style>
-    html, body { margin: 0; height: 100%; background: #e9d3e6; }
-    body { display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 16px; }
-    video { width: 100%; max-width: 1280px; max-height: calc(100vh - 32px); aspect-ratio: 16 / 9; border-radius: 14px;
-      box-shadow: 0 10px 40px rgba(80, 50, 90, .25); background: #f3ebdc; }
-  </style>
+  <title>Steven Kauwe</title>
+  <meta name="description" content="Machine-learning engineer. PhD in materials science. At night, I direct coding agents that build films and Rust.">
+  <meta property="og:title" content="Steven Kauwe">
+  <meta property="og:description" content="Machine-learning engineer. PhD in materials science. At night, I direct coding agents that build films and Rust.">
+  <meta property="og:image" content="https://stevenkauwe.github.io/img/loops/hero-still.webp">
+  <link rel="stylesheet" href="style.css">
+  <script src="loops.js" defer></script>
 </head>
 <body>
-  <video src="this-is-the-whole-website.mp4" poster="poster.webp" controls playsinline preload="metadata"
-    aria-label="Music video: This Is the Whole Website. A dapper potato in a top hat sings that he is the entire website."></video>
+  <header class="hero">
+    <img class="loop" data-loop="img/loops/hero.webp" src="img/loops/hero-still.webp" width="960" height="540" alt="">
+    <div class="hero-text">
+      <h1>Steven Kauwe</h1>
+      <p class="lede">Machine-learning engineer. PhD in materials science. At night, I direct coding agents that build films and Rust.</p>
+      <nav class="links" aria-label="Elsewhere">
+        <a href="https://github.com/StevenKauwe">GitHub</a>
+        <a href="https://scholar.google.com/citations?user=4r-K7YAAAAAJ">Google Scholar</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="chapters" aria-label="Career">
+      <figure class="chapter">
+        <img class="loop" data-loop="img/loops/byu.webp" src="img/loops/byu-still.webp" width="960" height="540" loading="lazy"
+          alt="Painted loop: lab glassware on a bench; a flask bubbles over into a column of mixing colour.">
+        <figcaption><strong>Chemical Engineering, BYU (2017).</strong> AIChE Outstanding Senior.</figcaption>
+      </figure>
+      <figure class="chapter">
+        <img class="loop" data-loop="img/loops/utah.webp" src="img/loops/utah-still.webp" width="960" height="540" loading="lazy"
+          alt="Painted loop: periodic-table tiles light up as a formula assembles; ink attention lines arc between the elements and a number blooms out.">
+        <figcaption><strong>PhD, Materials Science and Engineering, University of Utah (2021).</strong> Co-created CrabNet, a transformer that predicts a material's properties from its chemical formula alone. Outstanding Dissertation Award.</figcaption>
+      </figure>
+      <figure class="chapter">
+        <img class="loop" data-loop="img/loops/verana.webp" src="img/loops/verana-still.webp" width="960" height="540" loading="lazy"
+          alt="Painted loop: a pile of handwritten notes; highlighted phrases lift off the page and settle into a tidy table.">
+        <figcaption><strong>Quantitative Scientist, Verana Health.</strong> Language models (BERT, T5, GPT-J) that pull clinical facts out of unstructured medical records.</figcaption>
+      </figure>
+      <figure class="chapter">
+        <img class="loop" data-loop="img/loops/citrine.webp" src="img/loops/citrine-still.webp" width="960" height="540" loading="lazy"
+          alt="Painted loop: a notebook sketch folds itself into a humming machine with gears and gauges, and a dial snaps from five minutes to under a hundred milliseconds.">
+        <figcaption><strong>Lead ML Engineer, Citrine Informatics.</strong> Turned research ML into a production multi-tenant service, and made a five-minute design check answer in under 100 ms.</figcaption>
+      </figure>
+      <figure class="chapter">
+        <img class="loop" data-loop="img/loops/nights.webp" src="img/loops/nights-still.webp" width="960" height="540" loading="lazy"
+          alt="Painted loop: a desk lamp at night; Spud the potato, in his top hat, paints a film cell while a small crab turns the reel.">
+        <figcaption><strong>Nights.</strong> I direct coding agents. Together we built a hand-painted film studio from whisper, beat tracking and a brush engine (23 films so far), plus the Rust on this site.</figcaption>
+      </figure>
+    </section>
+
+    <section class="splitter" id="stems" aria-labelledby="stems-h">
+      <h2 id="stems-h">Stem splitter</h2>
+      <p>Drop in a song and get vocals, drums, bass and the rest back, separated on your own GPU. Your song never leaves your browser.</p>
+      <p class="soon">Coming soon.</p>
+    </section>
+
+    <section class="papers" aria-labelledby="papers-h">
+      <h2 id="papers-h">Papers</h2>
+      <ol>
+        <li><a href="https://doi.org/10.1038/s41524-021-00545-1">Compositionally restricted attention-based network for materials property predictions</a> <span>npj Computational Materials, 2021</span></li>
+        <li><a href="https://doi.org/10.1016/j.commatsci.2019.109498">Can machine learning find extraordinary materials?</a> <span>Computational Materials Science, 2020</span></li>
+        <li><a href="https://doi.org/10.1021/acs.chemmater.0c01907">Machine learning for materials scientists: an introductory guide toward best practices</a> <span>Chemistry of Materials, 2020</span></li>
+        <li><a href="https://doi.org/10.1007/s40192-018-0108-9">Machine learning prediction of heat capacity for solid inorganics</a> <span>Integrating Materials and Manufacturing Innovation, 2018</span></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <a class="hat" href="potato/" title="This is the whole website"><img src="img/hat.svg" width="36" height="30" alt="A potato's music video"></a>
+  </footer>
 </body>
 </html>

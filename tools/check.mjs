@@ -1,6 +1,8 @@
 // check.mjs: headless checks of the site over the Chrome DevTools Protocol.
 // Usage: node tools/check.mjs <baseUrl> [check…]   (needs Chrome on --remote-debugging-port=9222)
 import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const base = (process.argv[2] ?? 'http://127.0.0.1:8765/').replace(/\/?$/, '/');
 const only = process.argv.slice(3);
@@ -78,7 +80,9 @@ export const CHECKS = {
     const p = await open(base, { width: 390, height: 844 });
     const r = await p.ev(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
       cap: parseFloat(getComputedStyle(document.querySelector('figcaption')).fontSize) })`);
-    await p.screenshot('/private/tmp/claude-502/-Users-kaaikauwe-Documents-craft-craft/5f08bbdc-d5a5-497d-9b4d-1651a6829f8b/scratchpad/site-390.png');
+    const shot = join(process.env.SITE_SHOTS ?? tmpdir(), 'site-390.png');
+    await p.screenshot(shot);
+    console.log(`  screenshot ${shot}`);
     await p.close();
     if (r.sw > r.cw) throw new Error(`horizontal scroll: ${r.sw} > ${r.cw}`);
     if (r.cap < 15) throw new Error(`caption ${r.cap}px`);

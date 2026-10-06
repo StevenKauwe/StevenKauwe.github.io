@@ -107,7 +107,7 @@ export const CHECKS = {
       const imgs = [...document.querySelectorAll('img.loop')];
       const state = () => imgs.map(i => i.getAttribute('src').endsWith('-still.webp') ? 'still' : 'anim');
       const top = state();
-      document.querySelector('figure.chapter:nth-child(3)').scrollIntoView({ block: 'center' });
+      document.querySelector('figure.chapter:nth-of-type(3)').scrollIntoView({ block: 'center' });
       await new Promise(r => setTimeout(r, 600));
       return { top, mid: state() };
     })()`);

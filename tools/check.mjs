@@ -92,6 +92,34 @@ export const CHECKS = {
     await p.close();
     if (!(r >= 7)) throw new Error(`contrast ${r.toFixed(2)}:1`);
   },
+  // only on-screen loops animate; nothing animated is fetched until scrolled to
+  async loops() {
+    const p = await open(base, { wait: 2000 });
+    const animatedFirst = p.requests.filter(q => /\/loops\/(?!.*-still)[a-z]+\.webp$/.test(q.url)).map(q => q.url);
+    const r = await p.ev(`(async () => {
+      const imgs = [...document.querySelectorAll('img.loop')];
+      const state = () => imgs.map(i => i.getAttribute('src').endsWith('-still.webp') ? 'still' : 'anim');
+      const top = state();
+      document.querySelector('figure.chapter:nth-child(3)').scrollIntoView({ block: 'center' });
+      await new Promise(r => setTimeout(r, 600));
+      return { top, mid: state() };
+    })()`);
+    await p.close();
+    // at the top: the hero animates; chapters 2-5 (imgs 2..5) do not (chapter 1 may, it is within the margin)
+    if (r.top[0] !== 'anim') throw new Error(`hero ${r.top[0]}`);
+    if (r.top.slice(2).some(s => s === 'anim')) throw new Error(`below-fold animating at top: ${r.top}`);
+    if (animatedFirst.some(u => !/hero\.webp$/.test(u) && !/byu\.webp$/.test(u))) throw new Error(`fetched early: ${animatedFirst}`);
+    // scrolled to chapter 3: it animates, the hero is back to still
+    if (r.mid[3] !== 'anim' || r.mid[0] !== 'still') throw new Error(`after scroll ${r.mid}`);
+  },
+  // reduced motion: no animated loop is ever requested
+  async reduced() {
+    const p = await open(base, { reduce: true, wait: 1500 });
+    await p.ev(`(async () => { for (const f of document.querySelectorAll('figure.chapter')) { f.scrollIntoView(); await new Promise(r => setTimeout(r, 250)); } })()`);
+    const anim = [...p.live.values()].filter(q => /\/loops\/(?!.*-still)[a-z]+\.webp$/.test(q.url));
+    await p.close();
+    if (anim.length) throw new Error(`animated loops fetched: ${anim.map(q => q.url)}`);
+  },
 };
 
 let failed = 0;

@@ -190,14 +190,24 @@ export const CHECKS = {
     const flat = Object.entries(r).filter(([, v]) => v < 0.005).map(([n]) => n);
     if (flat.length) throw new Error(`empty-looking posters: ${flat}`);
   },
-  // every loop and still exists; each loop is 1-2 MB, each still under 60 KB
+  // the hero fills the screen, so its still and loop are full HD (the chapter cards stay 960 wide)
+  async hero() {
+    const p = await open(base, { wait: 2500 });
+    const r = await p.ev(`(async () => {
+      const w = async src => { const i = new Image(); i.src = src; await i.decode(); return i.naturalWidth; };
+      return { still: await w('img/loops/hero-still.webp'), loop: await w('img/loops/hero.webp') };
+    })()`);
+    await p.close();
+    if (r.still < 1920 || r.loop < 1920) throw new Error(`hero still ${r.still} px, loop ${r.loop} px wide`);
+  },
+  // every loop and still exists; each loop is 1-2 MB, each still under 60 KB (the full-HD hero still under 150 KB)
   async budget() {
     for (const n of ['hero', 'byu', 'utah', 'verana', 'citrine', 'nights']) {
       const a = await fetch(base + `img/loops/${n}.webp`), s = await fetch(base + `img/loops/${n}-still.webp`);
       if (a.status !== 200 || s.status !== 200) throw new Error(`${n}: ${a.status}/${s.status}`);
       const [ab, sb] = [(await a.arrayBuffer()).byteLength, (await s.arrayBuffer()).byteLength];
       if (ab > 2_100_000) throw new Error(`${n}.webp ${ab} bytes`);
-      if (sb > 60_000) throw new Error(`${n}-still.webp ${sb} bytes`);
+      if (sb > (n === 'hero' ? 150_000 : 60_000)) throw new Error(`${n}-still.webp ${sb} bytes`);
       if (Buffer.from(await (await fetch(base + `img/loops/${n}.webp`)).arrayBuffer()).indexOf('ANIM') < 0) throw new Error(`${n}.webp is not animated`);
     }
   },

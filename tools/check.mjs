@@ -62,9 +62,10 @@ export const CHECKS = {
   // the potato lives on at /potato/, and its old URLs keep working
   async potato() {
     const p = await open(base + 'potato/');
-    const v = await p.ev(`(async () => { const v = document.querySelector('video'); if (!v) return null; if (v.readyState < 1) await new Promise(r => v.addEventListener('loadedmetadata', r, { once: true })); return { d: v.duration, w: v.videoWidth }; })()`);
+    const v = await p.ev(`(async () => { const v = document.querySelector('video'); if (!v) return null; if (v.readyState < 1) await new Promise(r => v.addEventListener('loadedmetadata', r, { once: true })); return { d: v.duration, w: v.videoWidth, src: v.currentSrc }; })()`);
     await p.close();
     if (!v || !(v.d > 70) || v.w !== 1920) throw new Error(`video ${JSON.stringify(v)}`);
+    if (!v.src.endsWith('/films/this-is-the-whole-website.mp4')) throw new Error(`potato plays ${v.src}`);
     for (const u of ['this-is-the-whole-website.mp4', 'poster.webp']) if ((await status(base + u)) !== 200) throw new Error(`${u} not 200`);
     if (p.errors.length) throw new Error(p.errors.join('; '));
   },

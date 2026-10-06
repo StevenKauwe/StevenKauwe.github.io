@@ -3,14 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>a potato</title>
+  <title>This Is the Whole Website</title>
+  <meta property="og:title" content="This Is the Whole Website">
+  <meta property="og:image" content="poster.webp">
   <style>
     html, body { margin: 0; height: 100%; background: #e9d3e6; }
-    body { display: flex; align-items: center; justify-content: center; }
-    img { max-width: 100%; max-height: 100vh; }
+    body { display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 16px; }
+    video { width: 100%; max-width: 1280px; max-height: calc(100vh - 32px); aspect-ratio: 16 / 9; border-radius: 14px;
+      box-shadow: 0 10px 40px rgba(80, 50, 90, .25); background: #f3ebdc; }
   </style>
 </head>
 <body>
-  <img src="potato.webp" alt="A potato in a top hat with googly eyes and a moustache, waving, under the words: hello. i am a potato. this is the whole website.">
+  <video src="this-is-the-whole-website.mp4" poster="poster.webp" controls playsinline preload="metadata"
+    aria-label="Music video: This Is the Whole Website. A dapper potato in a top hat sings that he is the entire website."></video>
 </body>
 </html>

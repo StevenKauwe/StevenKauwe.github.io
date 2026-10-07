@@ -7,6 +7,9 @@ the potato lives at `/potato/` and streams from `/films/` too.
 `/escher/` is "Paint a current" (Flow): a hand-drawn current is symmetrised under the 17 wallpaper groups and ink
 flows along it, Rust on WebAssembly and WebGPU with a CPU fallback. It is a copy of `web/` from the local
 `escher-crocs` repo (`build.sh` builds `web/pkg`).
+`/river/` is "River": a pigment-grid neural cellular automaton paints the croc in watercolour on WebGL2, with a fixed
+pigment budget, so a cut croc regrows as twins and two pushed together fuse. It is a copy of `web/` from the local
+`river` repo (training in `river/train/`).
 
 The root `this-is-the-whole-website.mp4` and `poster.webp` must stay: old links point straight at them.
 

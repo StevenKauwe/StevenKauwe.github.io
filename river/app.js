@@ -430,7 +430,8 @@ function draw() {
   ctx.globalAlpha = 1;
   for (let i = cutMarks.length - 1; i >= 0; i--) if (cutMarks[i].life <= 0) cutMarks.splice(i, 1);
 }
-// the frame budget: fewer steps per frame, then fewer pixels, when frames run long; more steps when there is room
+// the frame budget: fewer steps per frame, then fewer pixels, when frames run long; more steps when there is room.
+// It never shrinks the grid: that means a new world, and it would wipe the river the visitor has made.
 function adapt(work) {
   workEMA += (work - workEMA) * 0.05;
   if (workEMA > 15) { slowFor++; fastFor = 0; } else if (workEMA < 8) { fastFor++; slowFor = 0; } else { slowFor = fastFor = 0; }
@@ -438,7 +439,6 @@ function adapt(work) {
     slowFor = 0;
     if (spf > 1) spf--;
     else if (dprCap > 1) { dprCap = Math.max(1, dprCap - 0.5); layout(); }
-    else if (quality > 0) { quality--; build(); start(scene.name === 'intro' ? 'free' : scene.name); }
   }
   if (fastFor > 240 && spf < (reduceMQ.matches ? 1 : 3)) { fastFor = 0; spf++; }
 }

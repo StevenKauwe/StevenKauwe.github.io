@@ -7,7 +7,8 @@ import { join, normalize, extname, resolve } from 'node:path';
 
 const [port, siteDir, filmsDir] = process.argv.slice(2);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
-  '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.md': 'text/markdown' };
+  '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.mp4': 'video/mp4', '.json': 'application/json', '.md': 'text/markdown',
+  '.wasm': 'application/wasm', '.bin': 'application/octet-stream' };
 
 createServer((req, res) => {
   const urlPath = req.url.split('?')[0];

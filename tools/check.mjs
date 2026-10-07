@@ -1,5 +1,5 @@
 // check.mjs: headless checks of the site over the Chrome DevTools Protocol.
-// Usage: node tools/check.mjs <baseUrl> [check…]   (needs Chrome on --remote-debugging-port=9222)
+// Usage: node tools/check.mjs <baseUrl> [check…]   (needs Chrome on --remote-debugging-port=9222, or CDP_PORT)
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { join } from 'node:path';
 
 const base = (process.argv[2] ?? 'http://127.0.0.1:8765/').replace(/\/?$/, '/');
 const only = process.argv.slice(3);
+const CDP = process.env.CDP_PORT ?? 9222;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const SITE_DIR = fileURLToPath(new URL('..', import.meta.url));
@@ -27,8 +28,8 @@ async function boxes(url) {
   return out;
 }
 
-export async function open(url, { width = 1440, height = 900, reduce = false, dark = false, wait = 2500 } = {}) {
-  const tab = await (await fetch('http://127.0.0.1:9222/json/new?about:blank', { method: 'PUT' })).json();
+export async function open(url, { width = 1440, height = 900, reduce = false, dark = false, wait = 2500, block = [] } = {}) {
+  const tab = await (await fetch(`http://127.0.0.1:${CDP}/json/new?about:blank`, { method: 'PUT' })).json();
   const ws = new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise(r => (ws.onopen = r));
   let id = 0;
@@ -45,6 +46,7 @@ export async function open(url, { width = 1440, height = 900, reduce = false, da
   const send = (method, params = {}) => new Promise(r => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   for (const d of ['Runtime', 'Network', 'Page', 'Log']) await send(`${d}.enable`);
   await send('Network.setCacheDisabled', { cacheDisabled: true });
+  if (block.length) await send('Network.setBlockedURLs', { urls: block });
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 600 });
   const features = [{ name: 'prefers-reduced-motion', value: reduce ? 'reduce' : 'no-preference' }, { name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }];
   await send('Emulation.setEmulatedMedia', { features });
@@ -52,13 +54,102 @@ export async function open(url, { width = 1440, height = 900, reduce = false, da
   await sleep(wait);
   const ev = async expr => (await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true })).result.result?.value;
   const screenshot = async path => writeFileSync(path, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).result.data, 'base64'));
-  const close = async () => { ws.close(); await fetch(`http://127.0.0.1:9222/json/close/${tab.id}`); };
+  const close = async () => { ws.close(); await fetch(`http://127.0.0.1:${CDP}/json/close/${tab.id}`); };
   return { ev, requests: [...requests.values()], live: requests, errors, screenshot, close, send };
 }
 
 const status = async url => (await fetch(url, { method: 'HEAD' })).status;
 
 export const CHECKS = {
+  // the Flow page loads, initialises and says it is flowing, with no console errors
+  async escher() {
+    const p = await open(base + 'escher/', { wait: 3000 });
+    const s = await p.ev(`document.querySelector('#status')?.textContent || ''`);
+    await p.close();
+    if (!/^flowing/.test(s)) throw new Error(`status "${s}"`);
+    if (p.errors.length) throw new Error(p.errors.join('; '));
+  },
+  // particles really move: two frames a second apart differ (read inside a frame: a WebGPU canvas reads blank outside one)
+  async flowruns() {
+    const p = await open(base + 'escher/', { wait: 2500 });
+    const r = await p.ev(`(async () => { const c = document.querySelector('#canvas'); const snap = () => new Promise(res => requestAnimationFrame(() => { try { res(c.toDataURL()); } catch (e) { res(''); } }));
+      const a = await snap(); await new Promise(r => setTimeout(r, 1000)); const b = await snap(); return { diff: a !== b, len: a.length }; })()`);
+    await p.close();
+    if (!r || r.len < 2000) throw new Error(`blank canvas ${JSON.stringify(r)}`);
+    if (!r.diff) throw new Error('the flow is frozen');
+  },
+  // switching group re-symmetrises: the status names the new group
+  async flowgroups() {
+    const p = await open(base + 'escher/', { wait: 2500 });
+    const r = await p.ev(`(async () => { const out = []; for (const id of ['p4', 'p6m', 'pgg']) { document.querySelector('#groups button[data-id="' + id + '"]').click(); await new Promise(r => setTimeout(r, 300)); out.push(document.querySelector('#status').textContent); } return out; })()`);
+    await p.close();
+    if (!r.every((s, i) => s.includes(['p4', 'p6m', 'pgg'][i]))) throw new Error(r.join(' | '));
+  },
+  // reduced motion: still flows, at half speed, no ghosts
+  async flowreduced() {
+    const p = await open(base + 'escher/', { reduce: true, wait: 2500 });
+    const r = await p.ev(`({ status: document.querySelector('#status').textContent, speed: window.flowDebug?.speed })`);
+    await p.close();
+    if (!/^flowing/.test(r.status) || r.speed !== 0.5) throw new Error(JSON.stringify(r));
+  },
+  // 390 px: no horizontal scroll, canvas fits
+  async flownarrow() {
+    const p = await open(base + 'escher/', { width: 390, height: 844, wait: 2500 });
+    const r = await p.ev(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, w: document.querySelector('#canvas').getBoundingClientRect().width })`);
+    await p.close();
+    if (r.sw > r.cw || r.w > r.cw) throw new Error(JSON.stringify(r));
+  },
+  // payload: everything /escher/ loads stays under 600 KB gzipped-equivalent (encodedDataLength)
+  async flowbudget() {
+    const p = await open(base + 'escher/', { wait: 3000 });
+    const bytes = p.requests.reduce((s, q) => s + q.bytes, 0);
+    await p.close();
+    console.log(`  ${bytes} bytes over ${p.requests.length} requests`);
+    // a missing page is a 183-byte 404: near zero means nothing of /escher/ loaded
+    if (bytes < 50_000) throw new Error(`${bytes} bytes: implausibly small, the page did not load`);
+    if (bytes > 600_000) throw new Error(`${bytes} bytes`);
+  },
+  // the Apps section leads with the Flow card linking to /escher/, and the home page's pre-scroll weight is unchanged
+  async homeescher() {
+    const p = await open(base, { wait: 1500 });
+    const r = await p.ev(`(() => { const s = document.querySelector('section[aria-labelledby="apps-h"]'); const first = s?.querySelector('a[href]'); return !!s && !!first && first.getAttribute('href') === 'escher/'; })()`);
+    const early = p.requests.filter(q => q.url.includes('/escher/'));
+    await p.close();
+    if (!r) throw new Error('no card linking to escher/');
+    if (early.length) throw new Error('escher files load on the home page: ' + early.map(q => q.url));
+  },
+  // without WebGPU the page still flows on the CPU path
+  async fallback_without_webgpu() {
+    const p = await open('about:blank', { wait: 200 });
+    await p.send('Page.addScriptToEvaluateOnNewDocument', { source: 'Object.defineProperty(navigator, "gpu", { value: undefined });' });
+    await p.send('Page.navigate', { url: base + 'escher/' });
+    await new Promise(r => setTimeout(r, 3000));
+    const s = await p.ev(`document.querySelector('#status').textContent`);
+    await p.close();
+    if (!/^flowing.*cpu$/.test(s)) throw new Error(`status "${s}"`);
+  },
+  // resizing keeps it flowing, with no blank canvas (the pixels are read inside a frame: a WebGPU canvas reads blank outside one)
+  async resize_keeps_flowing() {
+    const p = await open(base + 'escher/', { wait: 2500 });
+    await p.send('Emulation.setDeviceMetricsOverride', { width: 900, height: 700, deviceScaleFactor: 2, mobile: false });
+    await new Promise(r => setTimeout(r, 1200));
+    const r = await p.ev(`new Promise(res => requestAnimationFrame(() => { const c = document.querySelector('#canvas'); if (!c) return res({ status: '', varied: false }); const g = document.createElement('canvas'); g.width = 32; g.height = 32; const x = g.getContext('2d'); x.drawImage(c, 0, 0, 32, 32); const d = x.getImageData(0, 0, 32, 32).data; let v = 0; for (let i = 0; i < d.length; i += 4) v += Math.abs(d[i] - d[0]) + Math.abs(d[i + 1] - d[1]); res({ status: document.querySelector('#status').textContent, varied: v > 500, v, w: c.width, h: c.height }); }))`);
+    await p.close();
+    if (!/^flowing/.test(r.status) || !r.varied) throw new Error(JSON.stringify(r));
+  },
+  // a touch drag on the canvas paints and does not scroll the page
+  async touch_paints_without_scrolling() {
+    const p = await open(base + 'escher/', { width: 390, height: 844, wait: 2500 });
+    const box = await p.ev(`(() => { const r = document.querySelector('#overlay').getBoundingClientRect(); return [r.left + r.width / 2, r.top + 40]; })()`);
+    const before = await p.ev(`[scrollY, window.flowDebug?.strokes]`);
+    await p.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box[0], y: box[1] }] });
+    for (let k = 1; k <= 8; k++) await p.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: box[0], y: box[1] + k * 20 }] });
+    await p.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await new Promise(r => setTimeout(r, 300));
+    const after = await p.ev(`[scrollY, window.flowDebug?.strokes]`);
+    await p.close();
+    if (after[0] !== before[0] || !(after[1] > before[1])) throw new Error(`before ${before} after ${after}`);
+  },
   // the potato lives on at /potato/, and its old URLs keep working
   async potato() {
     const p = await open(base + 'potato/');

@@ -150,6 +150,160 @@ export const CHECKS = {
     await p.close();
     if (after[0] !== before[0] || !(after[1] > before[1])) throw new Error(`before ${before} after ${after}`);
   },
+  // ---- River (/river/): the watercolour croc toy ----
+  // the page loads, runs WebGL2 (no fallback), grows its first croc from a seed, with no console errors
+  async riverload() {
+    const p = await open(base + 'river/?paused', { wait: 1500 });
+    const r = await p.ev(`(async () => {
+      const t0 = Date.now(); while (!window.ready && !window.failed && Date.now() - t0 < 20000) await new Promise(r => setTimeout(r, 100));
+      while (window.river && !window.river.introDone && Date.now() - t0 < 40000) { window.river.advance(5); await new Promise(r => setTimeout(r, 0)); }
+      return { ready: !!window.ready, failed: window.failed || null, fallback: window.fallback || null, intro: !!window.river?.introDone, stats: window.river?.stats() };
+    })()`);
+    await p.close();
+    if (!r.ready || r.failed) throw new Error(`not ready: ${r.failed}`);
+    if (r.fallback) throw new Error(`fell back: ${r.fallback}`);
+    if (!r.intro) throw new Error(`the first croc never grew: ${JSON.stringify(r.stats)}`);
+    if (p.errors.length) throw new Error(p.errors.join('; '));
+  },
+  // the creature lives: after 600 sim steps of free play, croc + water pigment is unchanged and a croc is alive
+  async riverlives() {
+    const p = await open(base + 'river/?paused', { wait: 1500 });
+    const r = await p.ev(`(async () => {
+      const t0 = Date.now(); while (!window.river?.introDone && !window.failed && Date.now() - t0 < 40000) { window.river?.advance(5); await new Promise(r => setTimeout(r, 0)); }
+      const a = window.river.start('free'); let b = a; for (let i = 0; i < 60; i++) b = window.river.advance(5);
+      return { a, b };
+    })()`);
+    await p.close();
+    const steps = r.b.steps - r.a.steps, rel = Math.abs(r.b.total - r.a.total) / r.a.total;
+    console.log(`  ${steps} steps: pigment ${r.a.total} -> ${r.b.total} (${(rel * 100).toFixed(4)}%), ${r.b.crocs} croc(s)`);
+    if (steps < 600) throw new Error(`only ${steps} steps ran`);
+    if (!(rel < 1e-3)) throw new Error(`pigment total changed by ${(rel * 100).toFixed(3)}%`);
+    if (!(r.b.crocs >= 1)) throw new Error(`${r.b.crocs} crocs alive`);
+  },
+  // the knife makes twins: one croc, cut through, becomes two within 150 frames, and both regrow an eye
+  async riverknife() {
+    const p = await open(base + 'river/?paused&seed=5', { wait: 1500 });
+    const r = await p.ev(`(async () => {
+      const t0 = Date.now(); while (!window.river?.introDone && !window.failed && Date.now() - t0 < 40000) { window.river?.advance(5); await new Promise(r => setTimeout(r, 0)); }
+      window.river.start('free'); const before = window.river.advance(20).crocs;
+      window.river.cutCroc();
+      const counts = []; for (let i = 0; i < 150; i++) { const s = window.river.advance(1); counts.push(s.crocs); if (s.crocs >= 2 && i > 10) break; }
+      const later = window.river.advance(240);
+      return { before, at: counts.length, after: counts.at(-1), later };
+    })()`);
+    await p.close();
+    console.log(`  1 -> ${r.after} crocs at frame ${r.at}; 240 frames later ${r.later.crocs} crocs, ${r.later.eyes} eyes`);
+    if (r.before !== 1) throw new Error(`${r.before} crocs before the cut`);
+    if (!(r.after >= 2)) throw new Error('no twins');
+    if (!(r.later.eyes >= 2)) throw new Error(`${r.later.eyes} eyes after regrowth`);
+  },
+  // painted currents persist, cannot run away however often they are painted over, and Clear removes them
+  async rivercurrents() {
+    const p = await open(base + 'river/?paused&seed=3', { width: 1280, height: 720, wait: 1500 });
+    await p.ev(`(async () => { const t0 = Date.now(); while (!window.river?.introDone && Date.now() - t0 < 40000) { window.river?.advance(5); await new Promise(r => setTimeout(r, 0)); } window.river.start('free'); window.river.advance(10); })()`);
+    const v = await p.ev('window.river.stats()');
+    const cell = Math.max(1280 / v.grid[0], 720 / v.grid[1]), off = [(1280 - v.grid[0] * cell) / 2, (720 - v.grid[1] * cell) / 2];
+    const y = off[1] + v.grid[1] * 0.85 * cell, a = [off[0] + 20 * cell, y], b = [off[0] + (v.grid[0] - 20) * cell, y];
+    const m = (type, x, yy, buttons = 1) => p.send('Input.dispatchMouseEvent', { type, x, y: yy, button: 'left', buttons, clickCount: 1 });
+    let top = 0;
+    for (let k = 0; k < 40; k++) {
+      await m('mousePressed', ...a); for (let i = 1; i <= 8; i++) await m('mouseMoved', a[0] + (b[0] - a[0]) * i / 8, y); await m('mouseReleased', ...b, 0);
+      await p.ev('window.river.advance(1)'); top = Math.max(top, await p.ev('window.river.paintedMax()'));
+    }
+    await p.ev('window.river.advance(600)');
+    const later = await p.ev('window.river.paintedMax()');
+    const s1 = await p.ev('window.river.stats()');
+    await p.ev(`document.querySelector('#clear').click()`); await p.ev('window.river.advance(2)');
+    const cleared = await p.ev('window.river.paintedMax()');
+    await p.close();
+    console.log(`  painted 40 times: peak ${top} cells/step, 600 frames later ${later}, after Clear ${cleared}; pigment ${v.total} -> ${s1.total}`);
+    if (!(top > 0.2)) throw new Error('painting made no current');
+    if (top > 0.601) throw new Error(`painted current ran to ${top}`);
+    if (!(later > top * 0.9)) throw new Error(`the current faded (${later})`);
+    if (cleared > 1e-6) throw new Error(`Clear left ${cleared}`);
+    if (!(Math.abs(s1.total - v.total) / v.total < 1e-3)) throw new Error('the pigment total moved');
+  },
+  // reduced motion: one sim step per frame, and the river never acts on its own
+  async riverreduced() {
+    const p = await open(base + 'river/?paused', { reduce: true, wait: 1500 });
+    const r = await p.ev(`(async () => {
+      const t0 = Date.now(); while (!window.river?.introDone && Date.now() - t0 < 60000) { window.river?.advance(5); await new Promise(r => setTimeout(r, 0)); }
+      window.river.start('free'); window.river.idle(); window.river.advance(30); return window.river.stats();
+    })()`);
+    await p.close();
+    if (!r?.reduced) throw new Error('reduced motion not seen');
+    if (r.spf !== 1) throw new Error(`${r.spf} steps per frame`);
+    if (r.autoEvents !== 0) throw new Error(`${r.autoEvents} automatic events`);
+  },
+  // 390 px: no horizontal scroll; the five tools, Clear and the scenes button fit on screen
+  async rivernarrow() {
+    const p = await open(base + 'river/', { width: 390, height: 844, wait: 2500 });
+    const r = await p.ev(`(() => { const box = s => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.right]; };
+      return { sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, dock: box('.dock'), scenes: box('#scenes-btn'), clear: box('#clear'),
+        tools: document.querySelectorAll('.dock button[data-tool]').length }; })()`);
+    await p.close();
+    if (!r?.dock) throw new Error('no dock');
+    if (r.sw > r.cw) throw new Error(`horizontal scroll: ${r.sw} > ${r.cw}`);
+    for (const k of ['dock', 'scenes', 'clear']) if (!r[k] || r[k][0] < 0 || r[k][1] > r.cw) throw new Error(`${k} ${r[k]} outside ${r.cw}`);
+    if (r.tools !== 5) throw new Error(`${r.tools} tools`);
+  },
+  // a touch drag on the river paints a current and does not scroll the page
+  async rivertouch() {
+    const p = await open(base + 'river/?paused', { width: 390, height: 844, wait: 2000 });
+    await p.ev(`(async () => { const t0 = Date.now(); while (!window.river?.introDone && Date.now() - t0 < 40000) { window.river?.advance(5); await new Promise(r => setTimeout(r, 0)); } window.river.clearCurrents(); })()`);
+    for (let k = 0; k <= 8; k++) await p.send('Input.dispatchTouchEvent', { type: k ? 'touchMove' : 'touchStart', touchPoints: [{ x: 60 + k * 30, y: 700 }] });
+    await p.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await p.ev('window.river.advance(1)');
+    const r = await p.ev(`({ y: scrollY, painted: window.river.paintedMax() })`);
+    await p.close();
+    if (r.y !== 0 || !(r.painted > 0.05)) throw new Error(JSON.stringify(r));
+  },
+  // without WebGL2 the page shows a still and a looping clip of the river instead
+  async river_without_webgl2() {
+    const p = await open('about:blank', { wait: 200 });
+    await p.send('Page.addScriptToEvaluateOnNewDocument', { source: 'const g = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (t, o) { return t === "webgl2" ? null : g.call(this, t, o); };' });
+    await p.send('Page.navigate', { url: base + 'river/' });
+    await new Promise(r => setTimeout(r, 2500));
+    const r = await p.ev(`(() => { const f = document.querySelector('.fallback'); const i = f?.querySelector('img'); return { shown: f && !f.hidden, src: i?.getAttribute('src'), w: i?.naturalWidth }; })()`);
+    await p.close();
+    if (!r.shown || !/river-loop\.webp$/.test(r.src || '') || !(r.w > 0)) throw new Error(JSON.stringify(r));
+  },
+  // payload: everything /river/ loads is at most 2 MB (the fallback media are not among it)
+  async riverbudget() {
+    const p = await open(base + 'river/', { wait: 4000 });
+    const reqs = [...p.live.values()];
+    await p.close();
+    const bytes = reqs.reduce((s, q) => s + q.bytes, 0);
+    console.log(`  ${bytes} bytes over ${reqs.length} requests`);
+    if (bytes < 50_000) throw new Error(`${bytes} bytes: implausibly small, the page did not load`);
+    if (bytes > 2_000_000) throw new Error(`${bytes} bytes`);
+    if (reqs.some(q => /river-(still|loop)\.webp/.test(q.url))) throw new Error('fallback media fetched with WebGL2 present');
+  },
+  // the River card sits between Flow and the splitter, its loop lazy like the chapters', and nothing of /river/
+  // loads on the home page before scrolling
+  async homeriver() {
+    const p = await open(base, { wait: 1500 });
+    const r = await p.ev(`(() => { const ids = [...document.querySelectorAll('section[aria-labelledby="apps-h"] article.app')].map(a => a.id);
+      const a = document.querySelector('article.app#river'), img = a?.querySelector('img.loop');
+      return { ids, href: a?.querySelector('h3 a')?.getAttribute('href'), loop: img?.dataset.loop, src: img?.getAttribute('src'), lazy: img?.loading }; })()`);
+    const early = p.requests.filter(q => q.url.includes('/river/')).map(q => q.url);
+    await p.close();
+    if (JSON.stringify(r.ids.slice(0, 3)) !== JSON.stringify(['flow', 'river', 'stems'])) throw new Error(`Apps order ${r.ids}`);
+    if (r.href !== 'river/' || r.lazy !== 'lazy') throw new Error(JSON.stringify(r));
+    for (const u of [r.loop, r.src]) if (!u || (await status(new URL(u, base).href)) !== 200) throw new Error(`${u} not 200`);
+    if (early.length) throw new Error(`fetched before scrolling: ${early}`);
+  },
+  // the home page weighs what it did before the River card (tools/home-baseline.json, measured on main without it)
+  async homeweight() {
+    const p = await open(base, { wait: 1500 });
+    const bytes = p.requests.filter(q => !/\.webp$/.test(q.url) || /-still\.webp$/.test(q.url)).reduce((s, q) => s + q.bytes, 0);
+    await p.close();
+    const f = join(SITE_DIR, 'tools', 'home-baseline.json');
+    if (!existsSync(f)) throw new Error(`no baseline (tools/home-baseline.json); measured ${bytes} bytes`);
+    const { bytes: was } = JSON.parse(readFileSync(f, 'utf8'));
+    console.log(`  home before loops: ${bytes} bytes (baseline ${was}, ${bytes - was >= 0 ? '+' : ''}${bytes - was})`);
+    if (bytes - was > 3000) throw new Error(`home grew ${bytes - was} bytes before any loop`);
+  },
   // the potato lives on at /potato/, and its old URLs keep working
   async potato() {
     const p = await open(base + 'potato/');

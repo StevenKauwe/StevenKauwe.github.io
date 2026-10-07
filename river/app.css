@@ -1,0 +1,81 @@
+/* River: paper and ink, from the site's tokens. Colour comes only from the paint. */
+:root {
+  --paper: #f3ebdc; --paper-2: #ebe1cd; --ink: #2b2233; --ink-soft: #5a5163; --accent: #a84d33;
+  --chrome: color-mix(in srgb, var(--paper) 86%, transparent);
+  --line: color-mix(in srgb, var(--ink) 16%, transparent);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #1f1b26; --paper-2: #29232f; --ink: #f1e8d8; --ink-soft: #c9bfae; --accent: #f2a283; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
+body {
+  background: var(--paper); color: var(--ink);
+  font: 16px/1.4 "Iowan Old Style", "Palatino Linotype", Palatino, Charter, Georgia, serif;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage { position: fixed; inset: 0; touch-action: none; cursor: crosshair; user-select: none; -webkit-user-select: none; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+body[data-tool="knife"] #stage { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M3 21l9-9M12 12l6-6c1 3-1 6-4.5 7.5z' fill='none' stroke='%232b2233' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") 3 21, crosshair; }
+
+button { font: inherit; color: inherit; }
+.top { position: fixed; left: max(16px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); display: flex; align-items: baseline; gap: 14px; pointer-events: none; }
+.top h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: .01em; }
+.home { pointer-events: auto; color: var(--ink-soft); text-decoration: none; font-size: 15px; order: 2; }
+.home::before { content: "\2190\00a0"; }
+.home:hover, .home:focus-visible { color: var(--accent); text-decoration: underline; }
+
+.corner { position: fixed; right: max(16px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); display: flex; align-items: center; gap: 8px; }
+.count { margin: 0 6px 0 0; color: var(--ink-soft); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.count b { color: var(--ink); font-weight: 600; display: inline-block; transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+.count.bump b { transform: scale(1.35); }
+
+.pill { border: 1px solid var(--line); background: var(--chrome); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); min-height: 36px; }
+.pill:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
+.pill.icon { width: 36px; padding: 0; display: grid; place-items: center; }
+.pill svg, .dock svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+#surprise svg { stroke-width: 1.4; }
+#sound .on { display: none; } #sound[aria-pressed="true"] .on { display: inline; } #sound[aria-pressed="true"] .off { display: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.menu { position: relative; }
+.pop { position: absolute; right: 0; top: calc(100% + 6px); margin: 0; padding: 6px; list-style: none; min-width: 150px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(40, 25, 50, .18); }
+.pop button { display: block; width: 100%; text-align: left; padding: 8px 12px; border: 0; background: none; border-radius: 9px; cursor: pointer; }
+.pop button:hover, .pop button:focus-visible { background: var(--paper-2); }
+.pop button[aria-current="true"] { color: var(--accent); }
+
+.dock { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 4px; padding: 5px;
+  background: var(--chrome); border: 1px solid var(--line); border-radius: 18px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 6px 24px rgba(40, 25, 50, .12); max-width: calc(100vw - 32px); }
+.dock button { display: grid; justify-items: center; gap: 2px; min-width: 62px; padding: 7px 8px 6px; border: 0; border-radius: 13px; background: none; cursor: pointer; color: var(--ink-soft); }
+.dock button span { font-size: 13px; }
+.dock button:hover { color: var(--ink); background: color-mix(in srgb, var(--paper-2) 70%, transparent); }
+.dock button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.dock .clear { margin-left: 4px; border-left: 1px solid var(--line); border-radius: 0 13px 13px 0; }
+.dock button svg { width: 24px; height: 24px; }
+
+.hint { position: fixed; left: 50%; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 76px); transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+  padding: 6px 6px 6px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 6px 22px rgba(40, 25, 50, .14);
+  font-style: italic; max-width: calc(100vw - 32px); transition: opacity .4s, transform .4s; }
+.hint p { margin: 0; }
+.hint button { border: 0; background: none; font-size: 22px; line-height: 1; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: var(--ink-soft); font-style: normal; }
+.hint.out { opacity: 0; transform: translate(-50%, 8px); }
+
+.fallback { position: fixed; inset: 0; display: grid; place-content: center; gap: 14px; padding: 16px; text-align: center; color: var(--ink-soft); }
+.fallback img { width: min(960px, 100%); height: auto; border-radius: 14px; box-shadow: 0 8px 30px rgba(40, 25, 50, .16); }
+.noscript { position: fixed; inset: auto 16px 40% 16px; text-align: center; }
+
+@media (max-width: 560px) {
+  .top h1 { font-size: 22px; }
+  .home { font-size: 0; order: 0; } .home::before { font-size: 20px; content: "\2190"; }
+  .count span { display: none; }
+  .dock button { min-width: 0; flex: 1 1 0; padding: 7px 6px 5px; }
+  .dock button span { font-size: 11.5px; }
+  .dock { width: calc(100vw - 24px); justify-content: space-between; }
+  .hint { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 70px); font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { .count b, .hint { transition: none; } }

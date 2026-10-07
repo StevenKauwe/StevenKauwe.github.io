@@ -223,6 +223,23 @@ export const CHECKS = {
     if (cleared > 1e-6) throw new Error(`Clear left ${cleared}`);
     if (!(Math.abs(s1.total - v.total) / v.total < 1e-3)) throw new Error('the pigment total moved');
   },
+  // a busy machine (slow frames for seconds) may lower the quality, but never wipes the river the visitor made
+  async riverslow() {
+    const p = await open(base + 'river/', { width: 1440, height: 900, wait: 1500 });
+    await p.ev(`(async () => { const t0 = Date.now(); while (!window.river?.stats().introDone && Date.now() - t0 < 40000) await new Promise(r => setTimeout(r, 200)); })()`);
+    const before = await p.ev(`(() => { const w = window.world, [W, H] = window.river.stats().grid;
+      for (let x = 10; x < W - 10; x += 2) w.flow.dab(x, H * 0.8, 1, 0, 0.02, 9, 0.6);
+      window.__world = w; const step = w.step.bind(w);
+      w.step = (...a) => { const t = performance.now(); while (performance.now() - t < 20); return step(...a); };
+      return { painted: window.river.paintedMax(), quality: window.river.stats().quality }; })()`);
+    await new Promise(r => setTimeout(r, 14000));
+    const after = await p.ev(`({ same: window.world === window.__world, painted: window.river.paintedMax(), stats: window.river.stats() })`);
+    await p.close();
+    console.log(`  painted ${before.painted} -> ${after.painted}; quality ${before.quality} -> ${after.stats.quality}, dpr ${after.stats.dpr}, spf ${after.stats.spf}`);
+    if (!(before.painted > 0.1)) throw new Error('painting made no current');
+    if (!after.same) throw new Error('the world was rebuilt: everything the visitor made is gone');
+    if (!(after.painted > before.painted * 0.9)) throw new Error(`painted currents lost (${after.painted})`);
+  },
   // reduced motion: one sim step per frame, and the river never acts on its own
   async riverreduced() {
     const p = await open(base + 'river/?paused', { reduce: true, wait: 1500 });

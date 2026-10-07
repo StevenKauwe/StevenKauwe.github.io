@@ -1,0 +1,89 @@
+/* Paper and ink tokens from StevenKauwe.github.io/style.css; layout from mockup D. */
+:root {
+  --paper: #f3ebdc; --paper-2: #ebe1cd; --ink: #2b2233; --ink-soft: #5a5163; --accent: #a84d33;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .36 0 0 0 0 .25 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  --ochre: #d6a24a; --rose: #c96f68; --blue: #6c93b8; --green: #5f9a4c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #1f1b26; --paper-2: #29232f; --ink: #f1e8d8; --ink-soft: #c9bfae; --accent: #f2a283; --green: #86b56e; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper) var(--grain); color: var(--ink);
+  font: 18px/1.55 "Iowan Old Style", "Palatino Linotype", Palatino, Charter, Georgia, serif;
+}
+a { color: var(--accent); text-underline-offset: .18em; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chip { border: 1.5px solid var(--ink); background: transparent; border-radius: 999px; padding: 2px 11px;
+  cursor: pointer; font-size: 16px; line-height: 1.5; transition: background .15s, color .15s, transform .1s; }
+.chip:hover { background: var(--paper-2); }
+.chip:active { transform: translateY(1px); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.chip.quiet { border-color: transparent; color: var(--ink-soft); }
+.chip.quiet:hover { color: var(--ink); }
+.chip:disabled { opacity: .45; cursor: default; }
+.card { background: var(--paper); background: color-mix(in srgb, var(--paper) 90%, transparent);
+  border-radius: 16px; box-shadow: 0 8px 30px rgba(40, 25, 50, .16); padding: 12px 16px; }
+.muted { color: var(--ink-soft); }
+.small { font-size: 15px; }
+
+.head { padding: 12px 16px 0; }
+.head .home { font-size: 16px; }
+.head .title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 2px; }
+.head h1 { margin: 0; font-size: clamp(30px, 4vw, 42px); line-height: 1.1; }
+.head p { margin: 0; color: var(--ink-soft); }
+.picker { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 16px 4px; }
+.fam { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.fam > span { font-size: 13px; color: var(--ink-soft); font-style: italic; margin-right: 2px; }
+.fam .chip { font-size: 15px; padding: 1px 9px; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 16px 10px; }
+.tools .swatches { display: inline-flex; gap: 6px; }
+.tools .sep { width: 1px; height: 22px; background: var(--ink-soft); opacity: .4; margin: 0 2px; }
+.tools label { font-size: 15px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+.tools input[type=range] { width: 80px; accent-color: var(--accent); }
+#forceval { min-width: 3.3em; }
+.swatch { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--ink); cursor: pointer; padding: 0; }
+/* the chosen swatch wears a ring of its own (box-shadow), so the focus outline still shows on it */
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4.5px var(--ink); }
+.croc-btn { border-color: #4d7a3e; }
+
+/* touch-action on the wrapper: a drag on the stage paints, it never scrolls or zooms the page */
+.stage { position: relative; margin: 0 16px; height: max(420px, calc(100vh - 262px)); border-radius: 16px; overflow: hidden;
+  touch-action: none; background: var(--paper); }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#overlay { cursor: crosshair; touch-action: none; }
+#overlay.grabbing { cursor: grabbing; }
+#overlay.over-croc { cursor: grab; }
+.stage::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 25%, transparent); }
+.info { position: absolute; left: 14px; bottom: 14px; max-width: min(380px, calc(100% - 28px)); pointer-events: none; transition: opacity .25s; }
+.info .hm { font-size: 36px; line-height: 1; font-style: italic; font-weight: 600; }
+.info .orb { font-size: 20px; }
+.info p { margin: 4px 0 0; font-size: 15px; }
+.hint { position: absolute; right: 14px; top: 12px; font-style: italic; color: var(--ink-soft); font-size: 15px; pointer-events: none; transition: opacity .6s;
+  background: var(--paper); padding: 2px 10px; border-radius: 999px; }
+.hint.gone { opacity: 0; }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 24px; padding: 8px 16px 18px; margin: 0; }
+.foot p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+.status { font-variant-numeric: tabular-nums; }
+.credit { font-style: italic; }
+
+@media (max-width: 600px) {
+  .head { padding: 10px 12px 0; }
+  .head p { font-size: 16px; line-height: 1.4; }
+  .picker, .tools { padding-left: 12px; padding-right: 12px; }
+  .stage { height: 62vh; margin: 0 8px; }
+  .info { left: 8px; right: 8px; bottom: 8px; max-width: none; padding: 6px 10px; }
+  .info .hm { font-size: 26px; }
+  .info p { display: none; }
+  .hint { display: none; }
+  .tools input[type=range] { width: 70px; }
+  .foot { padding: 8px 12px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chip, .info, .hint { transition: none; }
+}

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow · Steven Kauwe</title>
+<meta name="description" content="Paint a current in one tile of a wallpaper; the symmetry copies it everywhere and the ink follows. Crocs swim in it.">
+<meta property="og:title" content="Flow">
+<meta property="og:description" content="Paint a current; the symmetry does the rest.">
+<meta property="og:image" content="https://stevenkauwe.github.io/escher/still.webp">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="flow.css">
+<link rel="modulepreload" href="pkg/escher_web.js">
+<script type="module" src="flow.js"></script>
+</head>
+<body>
+<div class="head">
+  <a class="home" href="/">← Steven Kauwe</a>
+  <div class="title">
+    <h1>Flow</h1>
+    <p>Paint currents, not lines. The wallpaper group symmetrises your current and the ink follows it.</p>
+  </div>
+</div>
+
+<div class="picker" id="groups" role="group" aria-label="wallpaper group">
+  <div class="fam"><span>oblique</span><button class="chip" data-id="p1" aria-pressed="false"><i>p1</i></button><button class="chip" data-id="p2" aria-pressed="false"><i>p2</i></button></div>
+  <div class="fam"><span>rectangular</span><button class="chip" data-id="pm" aria-pressed="false"><i>pm</i></button><button class="chip" data-id="pg" aria-pressed="false"><i>pg</i></button><button class="chip" data-id="pmm" aria-pressed="false"><i>pmm</i></button><button class="chip" data-id="pmg" aria-pressed="false"><i>pmg</i></button><button class="chip" data-id="pgg" aria-pressed="false"><i>pgg</i></button></div>
+  <div class="fam"><span>rhombic</span><button class="chip" data-id="cm" aria-pressed="false"><i>cm</i></button><button class="chip" data-id="cmm" aria-pressed="false"><i>cmm</i></button></div>
+  <div class="fam"><span>square</span><button class="chip" data-id="p4" aria-pressed="false"><i>p4</i></button><button class="chip" data-id="p4m" aria-pressed="false"><i>p4m</i></button><button class="chip" data-id="p4g" aria-pressed="false"><i>p4g</i></button></div>
+  <div class="fam"><span>hexagonal</span><button class="chip" data-id="p3" aria-pressed="false"><i>p3</i></button><button class="chip" data-id="p3m1" aria-pressed="false"><i>p3m1</i></button><button class="chip" data-id="p31m" aria-pressed="false"><i>p31m</i></button><button class="chip" data-id="p6" aria-pressed="false"><i>p6</i></button><button class="chip" data-id="p6m" aria-pressed="false"><i>p6m</i></button></div>
+</div>
+
+<div class="tools">
+  <span class="swatches" role="group" aria-label="ink colour">
+    <button class="swatch" data-brush="0" title="ink" aria-label="ink" aria-pressed="false" style="background: var(--ink)"></button>
+    <button class="swatch" data-brush="1" title="green" aria-label="green" aria-pressed="false" style="background: var(--green)"></button>
+    <button class="swatch" data-brush="2" title="rose" aria-label="rose" aria-pressed="true" style="background: var(--rose)"></button>
+    <button class="swatch" data-brush="3" title="blue" aria-label="blue" aria-pressed="false" style="background: var(--blue)"></button>
+  </span>
+  <label>strength <input type="range" id="strength" min="0.2" max="2.5" step="0.05" value="1"></label>
+  <label title="how long the ink trails linger: short ↔ long">trails <input type="range" id="trails" min="0" max="1" step="0.01" value="0.2" aria-label="trail length, short to long"></label>
+  <span class="sep"></span>
+  <button class="chip croc-btn" id="addcroc" title="adds one croc and all its symmetric copies">+ croc</button>
+  <label title="each croc copy pulls ink in, or pushes it away">croc force <input type="range" id="crocforce" min="-1" max="1" step="0.05" value="0.6" aria-label="croc force, attract to repel"> <span id="forceval" class="small"></span></label>
+  <button class="chip quiet" id="undo">undo</button>
+  <button class="chip quiet" id="clear">clear</button>
+  <button class="chip" id="surprise">surprise me</button>
+  <span class="sep"></span>
+  <button class="chip" id="marbling" aria-pressed="false">marbling</button>
+  <button class="chip" id="byspeed" aria-pressed="false">colour by speed</button>
+  <button class="chip" id="elements" aria-pressed="true">symmetry elements</button>
+</div>
+
+<div class="stage" id="stage">
+  <canvas id="canvas" aria-hidden="true"></canvas>
+  <canvas id="overlay" role="img" aria-label="The flow. Drag to paint a current; the wallpaper group copies it into every tile and the ink follows. Grab a croc to move it."></canvas>
+  <div class="hint" id="hint">drag to paint a current · grab a croc to stir · the calm spots are the rotation centres</div>
+  <div class="info card" id="info" aria-live="polite"></div>
+</div>
+
+<div class="foot">
+  <p class="status" id="status" aria-live="off">loading…</p>
+  <p class="credit">Paint a current; the symmetry does the rest. Rust on WebAssembly and WebGPU, built by coding agents I direct.</p>
+</div>
+<noscript><p class="foot">Flow needs JavaScript: the current, the ink and the crocs all run in the browser.</p></noscript>
+</body>
+</html>

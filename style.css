@@ -43,8 +43,17 @@ h2 { font-size: clamp(26px, 3.4vw, 34px); margin: 2.2em 0 .5em; }
   .chapter:nth-of-type(even) img { order: 2; }
 }
 
-.splitter { margin-top: clamp(48px, 9vw, 110px); padding: 26px; border-radius: 18px; background: var(--paper-2); }
-.splitter h2 { margin-top: 0; }
+.apps { margin-top: clamp(48px, 9vw, 110px); }
+.app-grid { display: grid; gap: 40px 36px; align-items: start; }
+@media (min-width: 900px) { .app-grid { grid-template-columns: 1fr 1fr; } }
+.app h3 { margin: 18px 0 .3em; font-size: 1.3em; }
+.app h3 a { color: var(--ink); text-decoration: none; }
+.app h3 a:hover { text-decoration: underline; }
+.app p { margin: 0 0 .6em; max-width: 34em; color: var(--ink-soft); }
+.app-pic { display: block; }
+.app img { display: block; border-radius: 14px; box-shadow: 0 8px 30px rgba(40, 25, 50, .16); background: #efe6d4; aspect-ratio: 16 / 9; object-fit: cover; width: 100%; height: auto; }
+.app#stems { padding: 26px; border-radius: 18px; background: var(--paper-2); }
+.app#stems h3 { margin-top: 0; }
 .soon { font-style: italic; color: var(--ink-soft); }
 
 .papers ol { padding-left: 1.2em; display: grid; gap: .7em; }

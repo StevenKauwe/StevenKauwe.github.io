@@ -10,6 +10,10 @@ flows along it, Rust on WebAssembly and WebGPU with a CPU fallback. It is a copy
 `/river/` is "River": a pigment-grid neural cellular automaton paints the croc in watercolour on WebGL2, with a fixed
 pigment budget, so a cut croc regrows as twins and two pushed together fuse. It is a copy of `web/` from the local
 `river` repo (training in `river/train/`).
+`/browsertabicl/` is "BrowserTabICL": fit a TabICL v2 model on your own CSV table and predict new rows, Rust on
+WebAssembly, nothing uploaded. It lives in its own repository, github.com/StevenKauwe/browsertabicl, and is served
+from there at `/browsertabicl/` (its `docs/` folder, weights included), so this repo must not have a `browsertabicl/`
+folder. Only the home-page card and its picture (`img/apps/browsertabicl-still.webp`) are here.
 
 The root `this-is-the-whole-website.mp4` and `poster.webp` must stay: old links point straight at them.
 

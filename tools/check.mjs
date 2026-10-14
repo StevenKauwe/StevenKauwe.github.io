@@ -296,7 +296,7 @@ export const CHECKS = {
     if (bytes > 2_000_000) throw new Error(`${bytes} bytes`);
     if (reqs.some(q => /river-(still|loop)\.webp/.test(q.url))) throw new Error('fallback media fetched with WebGL2 present');
   },
-  // the River card sits between Flow and the splitter, its loop lazy like the chapters', and nothing of /river/
+  // the River card sits after Flow (BrowserTabICL follows it, then the splitter), its loop lazy like the chapters', and nothing of /river/
   // loads on the home page before scrolling
   async homeriver() {
     const p = await open(base, { wait: 1500 });
@@ -305,7 +305,7 @@ export const CHECKS = {
       return { ids, href: a?.querySelector('h3 a')?.getAttribute('href'), loop: img?.dataset.loop, src: img?.getAttribute('src'), lazy: img?.loading }; })()`);
     const early = p.requests.filter(q => q.url.includes('/river/')).map(q => q.url);
     await p.close();
-    if (JSON.stringify(r.ids.slice(0, 3)) !== JSON.stringify(['flow', 'river', 'stems'])) throw new Error(`Apps order ${r.ids}`);
+    if (JSON.stringify(r.ids) !== JSON.stringify(['flow', 'river', 'tabicl', 'stems'])) throw new Error(`Apps order ${r.ids}`);
     if (r.href !== 'river/' || r.lazy !== 'lazy') throw new Error(JSON.stringify(r));
     for (const u of [r.loop, r.src]) if (!u || (await status(new URL(u, base).href)) !== 200) throw new Error(`${u} not 200`);
     if (early.length) throw new Error(`fetched before scrolling: ${early}`);

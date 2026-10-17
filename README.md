@@ -15,6 +15,10 @@ WebAssembly, nothing uploaded. It lives in its own repository, github.com/Steven
 from there at `/tabicl-anywhere/` (its `docs/` folder, weights included), so this repo must not have a `tabicl-anywhere/`
 folder. Only the home-page card and its picture (`img/apps/browsertabicl-still.webp`) are here.
 
+`/listen-and-learn/` is "Listen & Learn": ear-training games for small children, Rust on WebAssembly. It lives in its
+own repository, github.com/StevenKauwe/listen-and-learn, and is served from there, so this repo must not have a
+`listen-and-learn/` folder. Only the home-page card and its picture (`img/apps/listen-and-learn-still.webp`) are here.
+
 The root `this-is-the-whole-website.mp4` and `poster.webp` must stay: old links point straight at them.
 
 Local: `node tools/serve.mjs 8777 . ../films` (mounts the films repo at `/films/`, with Range support), then
